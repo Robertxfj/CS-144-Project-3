@@ -1,5 +1,15 @@
 package edu.ucla.cs.cs144;
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.*;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
+
+import java.io.File;
+import java.io.IOException;
 import java.sql.*;
 
 public class Indexer {
@@ -34,15 +44,28 @@ public class Indexer {
              * and place your class source files at src/edu/ucla/cs/cs144/.
              *
              */
+
+            Directory indexDir = FSDirectory.open(new File("/var/lib/lucene/index1"));
+            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_10_2, new StandardAnalyzer());
+            IndexWriter indexWriter = new IndexWriter(indexDir, config);
+
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT * FROM Item");
             while (resultSet.next()) {
-                System.out.println(resultSet.getString("name"));
+                Document document = new Document();
+                document.add(new IntField("id", resultSet.getInt("id"), Field.Store.YES));
+                document.add(new StringField("name", resultSet.getString("name"), Field.Store.YES));
+                document.add(new TextField("description", resultSet.getString("description"), Field.Store.NO));
+                indexWriter.addDocument(document);
             }
+
+            indexWriter.close();
 
             // close the database connection
             conn.close();
         } catch (SQLException ex) {
+            System.out.println(ex);
+        } catch (IOException ex) {
             System.out.println(ex);
         }
 
