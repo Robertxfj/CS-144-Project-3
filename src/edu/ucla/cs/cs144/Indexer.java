@@ -11,6 +11,7 @@ import org.apache.lucene.util.Version;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
+import java.sql.Statement;
 
 public class Indexer {
     
@@ -46,16 +47,34 @@ public class Indexer {
              */
 
             Directory indexDir = FSDirectory.open(new File("/var/lib/lucene/index1"));
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_10_2, new StandardAnalyzer());
+            IndexWriterConfig config = new IndexWriterConfig(Version.LATEST, new StandardAnalyzer());
             IndexWriter indexWriter = new IndexWriter(indexDir, config);
 
-            Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM Item");
-            while (resultSet.next()) {
+            Statement itemStatement = conn.createStatement();
+            ResultSet itemSet = itemStatement.executeQuery(
+                    "SELECT * FROM Item"
+            );
+
+            while (itemSet.next()) {
+                int id = itemSet.getInt("id");
+
                 Document document = new Document();
-                document.add(new IntField("id", resultSet.getInt("id"), Field.Store.YES));
-                document.add(new StringField("name", resultSet.getString("name"), Field.Store.YES));
-                document.add(new TextField("description", resultSet.getString("description"), Field.Store.NO));
+                document.add(new StringField("id", String.valueOf(id), Field.Store.YES));
+                document.add(new TextField("name", itemSet.getString("name"), Field.Store.YES));
+                String content = itemSet.getString("name") + " " + itemSet.getString("description");
+
+                Statement categoryStatement = conn.createStatement();
+                ResultSet categorySet = categoryStatement.executeQuery(
+                        "SELECT C.name as name " +
+                        "FROM Category C, ItemCategory IC " +
+                        "WHERE C.id=IC.category_id AND IC.item_id=" + String.valueOf(id)
+                );
+
+                while (categorySet.next()) {
+                    content = content + " " + categorySet.getString("name");
+//                    System.out.println(categorySet.getString("name"));
+                }
+                document.add(new TextField("content", content, Field.Store.NO));
                 indexWriter.addDocument(document);
             }
 
@@ -68,8 +87,6 @@ public class Indexer {
         } catch (IOException ex) {
             System.out.println(ex);
         }
-
-
 
     }    
 
