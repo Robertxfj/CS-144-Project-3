@@ -12,6 +12,10 @@ import org.apache.lucene.store.FSDirectory;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class AuctionSearch implements IAuctionSearch {
 
@@ -41,6 +45,8 @@ public class AuctionSearch implements IAuctionSearch {
         _parser = new QueryParser("content", new StandardAnalyzer());
     }
 	
+
+    
 	public SearchResult[] basicSearch(String queryString, int numResultsToSkip,
 			int numResultsToReturn) {
 		// TODO: Your code here!
@@ -48,7 +54,7 @@ public class AuctionSearch implements IAuctionSearch {
             Query query = _parser.parse(queryString);
             TopDocs topDocs = _searcher.search(query, numResultsToSkip + numResultsToReturn);
             System.out.println(topDocs.totalHits);
-            SearchResult[] searchResults = new SearchResult[numResultsToReturn - numResultsToSkip];
+            SearchResult[] searchResults = new SearchResult[numResultsToReturn];
             for (int i = numResultsToSkip; i < numResultsToReturn + numResultsToSkip; i++) {
                 Document document = _searcher.doc(topDocs.scoreDocs[i].doc);
                 searchResults[i] = new SearchResult(document.get("id"), document.get("name"));
@@ -64,8 +70,41 @@ public class AuctionSearch implements IAuctionSearch {
 
 	public SearchResult[] spatialSearch(String query, SearchRegion region,
 			int numResultsToSkip, int numResultsToReturn) {
-		// TODO: Your code here!
-		return new SearchResult[0];
+		
+		SearchResult[] results = basicSearch(query, numResultsToSkip, numResultsToReturn);
+		
+
+		SearchResult[] searchResults = new SearchResult[numResultsToReturn];
+        
+		try {
+			Connection connection = DbManager.getConnection(true);
+		
+			Statement isamStatement = connection.createStatement();
+	        ResultSet isamSet = isamStatement.executeQuery(query);
+	        
+	        
+	        int searchResults_index = 0;
+	        int found_index = 0;
+	        
+	        for (SearchResult i:results){
+	        	while(isamSet.next()){
+	        		if(isamSet.getInt("id") == Integer.parseInt(i.getItemId())) {
+	        			if (found_index < numResultsToSkip)
+	        				found_index++;
+	        			else if(searchResults_index < numResultsToReturn){
+	        				searchResults[searchResults_index] = i;
+	        				searchResults_index++;
+	        			}
+	        		}
+	        	}
+	        }
+        } catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+     
+		
+		return searchResults;
 	}
 
 	public String getXMLDataForItemId(String itemId) {
