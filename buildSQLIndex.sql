@@ -1,0 +1,7 @@
+CREATE TABLE IsamTable (
+	Itemid INT NOT NULL,
+	location POINT NOT NULL,
+	SPATIAL INDEX(location),
+	PRIMARY KEY(itemId)	) 
+ENGINE = MYISAM;
+
