@@ -21,7 +21,7 @@ public interface IAuctionSearch {
 	
 	/**
 	 * Searhc for all items with the given keywords, which are located 
-         * within the specified rectangular region
+     * within the specified rectangular region
 	 * 
 	 * @param query The keyword phrase for the search.
 	 * @param region SearchRegion object that represents the rectangular
