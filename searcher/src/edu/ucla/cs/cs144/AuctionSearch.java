@@ -53,11 +53,12 @@ public class AuctionSearch implements IAuctionSearch {
         try {
             Query query = _parser.parse(queryString);
             TopDocs topDocs = _searcher.search(query, numResultsToSkip + numResultsToReturn);
+            int resultLength = Math.max(Math.min(numResultsToReturn, topDocs.totalHits - numResultsToSkip), 0);
             System.out.println(topDocs.totalHits);
-            SearchResult[] searchResults = new SearchResult[numResultsToReturn];
-            for (int i = numResultsToSkip; i < numResultsToReturn + numResultsToSkip; i++) {
+            SearchResult[] searchResults = new SearchResult[resultLength];
+            for (int i = numResultsToSkip, j = 0; i < numResultsToSkip + resultLength; i++, j++) {
                 Document document = _searcher.doc(topDocs.scoreDocs[i].doc);
-                searchResults[i] = new SearchResult(document.get("id"), document.get("name"));
+                searchResults[j] = new SearchResult(document.get("id"), document.get("name"));
             }
             return searchResults;
         } catch (IOException ex) {
