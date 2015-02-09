@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 
 public class AuctionSearch implements IAuctionSearch {
 
@@ -45,7 +46,26 @@ public class AuctionSearch implements IAuctionSearch {
         _parser = new QueryParser("content", new StandardAnalyzer());
     }
 	
-
+    private SearchResult[] search(String queryString) {
+    	try {
+            Query query = _parser.parse(queryString);
+            TopDocs topDocs = _searcher.search(query, 0);
+            topDocs = _searcher.search(query, topDocs.totalHits);
+            int resultLength = topDocs.totalHits;
+            System.out.println(topDocs.totalHits);
+            SearchResult[] searchResults = new SearchResult[resultLength];
+            for (int j = 0; j < resultLength; j++) {
+                Document document = _searcher.doc(topDocs.scoreDocs[j].doc);
+                searchResults[j] = new SearchResult(document.get("id"), document.get("name"));
+            }
+            return searchResults;
+        } catch (IOException ex) {
+            System.out.println(ex);
+        } catch (ParseException ex) {
+            System.out.println(ex);
+        }
+        return new SearchResult[0];
+    }
     
 	public SearchResult[] basicSearch(String queryString, int numResultsToSkip,
 			int numResultsToReturn) {
@@ -72,8 +92,9 @@ public class AuctionSearch implements IAuctionSearch {
 	public SearchResult[] spatialSearch(String query, SearchRegion region,
 			int numResultsToSkip, int numResultsToReturn) {
 		
-		SearchResult[] results = basicSearch(query, numResultsToSkip, numResultsToReturn);
-		SearchResult[] searchResults = new SearchResult[numResultsToReturn];
+		ArrayList<SearchResult> searchResults = new ArrayList<SearchResult>();
+		
+		SearchResult[] results = search(query);
         
 		try {
 			Connection connection = DbManager.getConnection(true);
@@ -83,29 +104,34 @@ public class AuctionSearch implements IAuctionSearch {
                     " AND Y(location)>=" + region.getLy() + " AND Y(location)<=" + region.getRy();
 			Statement isamStatement = connection.createStatement();
 	        ResultSet isamSet = isamStatement.executeQuery(queryString);
-	        
-	        int searchResults_index = 0;
-	        int found_index = 0;
+	       
 	        
 	        for (SearchResult i:results){
 	        	while(isamSet.next()){
-	        		if(isamSet.getInt("itemId") == Integer.parseInt(i.getItemId())) {
-	        			if (found_index < numResultsToSkip)
-	        				found_index++;
-	        			else if(searchResults_index < numResultsToReturn){
-	        				searchResults[searchResults_index] = i;
-	        				searchResults_index++;
-	        			}
+	        		if(isamSet.getInt("ItemId") == Integer.parseInt(i.getItemId())) {
+	        			searchResults.add(i);
+	        			break;
 	        		}
 	        	}
+	        	isamSet.first();
+	        	if (searchResults.size() >= numResultsToSkip+numResultsToReturn)
+	        		break;
 	        }
+	        
+	        for (int i = 0; i < numResultsToSkip || i < searchResults.size(); i++) {
+	        	searchResults.remove(i);
+	        }
+	        
+	        return (SearchResult[]) searchResults.toArray();
+
+	        
         } catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
      
-		
-		return searchResults;
+		return new SearchResult[0];
+
 	}
 
 	public String getXMLDataForItemId(String itemId) {
