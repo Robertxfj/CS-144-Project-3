@@ -49,8 +49,10 @@ public class AuctionSearch implements IAuctionSearch {
     private SearchResult[] search(String queryString) {
     	try {
             Query query = _parser.parse(queryString);
-            TopDocs topDocs = _searcher.search(query, 0);
-            topDocs = _searcher.search(query, topDocs.totalHits);
+            TopDocs topDocs = _searcher.search(query, 1);
+            if (topDocs.totalHits > 0) {
+                topDocs = _searcher.search(query, topDocs.totalHits);
+            }
             int resultLength = topDocs.totalHits;
             System.out.println(topDocs.totalHits);
             SearchResult[] searchResults = new SearchResult[resultLength];
@@ -117,12 +119,14 @@ public class AuctionSearch implements IAuctionSearch {
 	        	if (searchResults.size() >= numResultsToSkip+numResultsToReturn)
 	        		break;
 	        }
+
+            int arraySize = Math.max(Math.min(numResultsToReturn + numResultsToSkip, searchResults.size() - numResultsToSkip), 0);
+            SearchResult[] finalResults = new SearchResult[arraySize];
+            for (int i = numResultsToSkip; i < arraySize; i++) {
+                finalResults[i] = searchResults.get(i);
+            }
 	        
-	        for (int i = 0; i < numResultsToSkip || i < searchResults.size(); i++) {
-	        	searchResults.remove(i);
-	        }
-	        
-	        return (SearchResult[]) searchResults.toArray();
+	        return finalResults;
 
 	        
         } catch (SQLException e) {
