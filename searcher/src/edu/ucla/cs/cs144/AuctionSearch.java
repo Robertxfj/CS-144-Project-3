@@ -72,23 +72,23 @@ public class AuctionSearch implements IAuctionSearch {
 			int numResultsToSkip, int numResultsToReturn) {
 		
 		SearchResult[] results = basicSearch(query, numResultsToSkip, numResultsToReturn);
-		
-
 		SearchResult[] searchResults = new SearchResult[numResultsToReturn];
         
 		try {
 			Connection connection = DbManager.getConnection(true);
-		
+
+            String queryString = "SELECT itemId FROM IsamTable WHERE X(location)>=" +
+                    region.getLx() + " AND X(location)<=" + region.getRx() +
+                    " AND Y(location)>=" + region.getLy() + " AND Y(location)<=" + region.getRy();
 			Statement isamStatement = connection.createStatement();
-	        ResultSet isamSet = isamStatement.executeQuery(query);
-	        
+	        ResultSet isamSet = isamStatement.executeQuery(queryString);
 	        
 	        int searchResults_index = 0;
 	        int found_index = 0;
 	        
 	        for (SearchResult i:results){
 	        	while(isamSet.next()){
-	        		if(isamSet.getInt("id") == Integer.parseInt(i.getItemId())) {
+	        		if(isamSet.getInt("itemId") == Integer.parseInt(i.getItemId())) {
 	        			if (found_index < numResultsToSkip)
 	        				found_index++;
 	        			else if(searchResults_index < numResultsToReturn){
